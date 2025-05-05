@@ -4,6 +4,8 @@ const express = require('express');
 const session = require("express-session");
 const bcrypt = require("bcrypt");
 const MongoStore = require("connect-mongo");
+const Joi = require("joi");
+
 const saltRounds = 12;
 // 1 hours
 const expireTime = 1 * 60 * 60 * 1000; 
@@ -23,8 +25,6 @@ const userCollection = database.db(mongodb_database).collection("users");
 
 let users = [];
 
-
-
 var mongoStore = MongoStore.create({
     mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/sessions`,
     crypto: {
@@ -40,7 +40,7 @@ app.use(session({
 }));
 
 app.use(express.urlencoded({ extended: false }));   
-
+app.use(express.static(__dirname + "/public"));
 
 app.get("/", function(req, res) {
     if (!req.session.authenticated) {
@@ -92,14 +92,25 @@ app.post("/submitUser", async (req, res) =>{
         res.send("Password is required  <br /><br />" + errorHtml);
         return;
     }
- 
+    const schema = Joi.object(
+    {
+        name: Joi.string().alphanum().max(20).required(),
+        username: Joi.string().alphanum().max(20).required(),
+        password: Joi.string().max(20).required()
+    });
+    const validationResult = schema.validate({name, username, password});
+    if (validationResult.error != null) {
+        res.send("<h1 style='color:darkred;'>A NoSQL injection attack was detected!!</h1>");
+        return;
+    }
     let hashedPassword = bcrypt.hashSync(password, saltRounds);
     users.push({
         name: name,
         username: username,
         password: hashedPassword
     });
-
+    
+    
     console.log(users);
     let usershtml = "";
     for (i = 0; i < users.length; i++) {
@@ -111,7 +122,6 @@ app.post("/submitUser", async (req, res) =>{
     req.session.username = username;
     req.session.name = name;
     req.session.cookie.maxAge = expireTime;
-    // res.send(html);
     res.redirect("/");
 
 });
@@ -120,26 +130,40 @@ app.post("/submitUser", async (req, res) =>{
 app.post("/loggingin", async(req, res) =>{
     let username = req.body.username;
     let password = req.body.password;
+    const schema = Joi.object(
+        {
+            username: Joi.string().alphanum().max(20).required(),
+            password: Joi.string().max(20).required()
+        });
+        const validationResult = schema.validate({username, password});
+        if (validationResult.error != null) {
+            res.send("<h1 style='color:darkred;'>A NoSQL injection attack was detected!!</h1>");
+            return;
+        }
 
-    for (i = 0; i < users.length; i++) {
-        console.log(`${users[i].username} : ${username}`) ;
-        if (users[i].username === username) {
-            console.log(`${users[i].password} : ${password}`) ;
-            let result = await bcrypt.compare(password, users[i].password);
-            console.log(`${result}`) ;
-            if (result === true) {
-                req.session.authenticated = true;
-                req.session.username = username;
-                req.session.name = users[i].name;
-                req.session.cookie.maxAge = expireTime;
-                res.redirect("/");
-                return;
-            } 
+    const users = await userCollection.find({username: username}).project({username: 1, password: 1, name: 1}).toArray();
+    console.log(users);
+    if (users.length != 1) {
+        console.log("User not found");
+        res.redirect("/login");
+        return;
+    } else {
+        
+        let result = await bcrypt.compare(password, users[0].password);
+        console.log(`${result}`) ;
+        if (result === true) {
+            req.session.authenticated = true;
+            req.session.username = users[0].username;
+            req.session.name = users[0].name;
+            req.session.cookie.maxAge = expireTime;
+            res.redirect("/");
+            return;
+        } else {
+            console.log("Incorrect password");
+            res.redirect("/login");
+            return;
         }
     }
-    // res.send("Invalid credentials");
-    res.redirect("/login");
-    return;
 });
 
 app.get("/members", function(req, res) {
@@ -147,7 +171,13 @@ app.get("/members", function(req, res) {
     if (!req.session.authenticated) {
         res.redirect("/login");
     } else {
-        res.send(`Welcome ${req.session.username} - Members Only Area`);   
+        
+        let randomNumber = Math.floor(Math.random() * 3);
+        
+        let html = `<h1>Hello ${req.session.username}</h1>
+        <h2>Dog ${randomNumber}:</h2> <img src='/dog${randomNumber}.png' style='width:450px;'> <br />
+        <a href="/logout"><button>Logout</button></a><br />`;  
+        res.send(html);
     }
 });
 

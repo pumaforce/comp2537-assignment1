@@ -2,6 +2,10 @@
 ## Setup git
 
 git log --show-signature
+git branch -M main
+git remove add origin https://github.com/pumaforce/comp2537-assignment1.git/
+git commit -m "first commit"
+
 git push -u origin main
 
 ## Setup Node project and Express, express-session
@@ -19,3 +23,6 @@ npm run devStart
 #other helpful tricks
 
 killall -9 node  // reset port 3000 by killing all node.
+
+#Demo
+use [$ne] on the user name
