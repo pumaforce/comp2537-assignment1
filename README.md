@@ -17,6 +17,9 @@ npm i nodemon
 npm i express-session 
 need to use a previous version of express
 "express": "^4.18.2",
+npm i dotenv
+npm i joi
+npm i connect-mongo
 
 npm run devStart
 
