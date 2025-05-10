@@ -145,7 +145,7 @@ app.post("/loggingin", async(req, res) =>{
     console.log(users);
     if (users.length != 1) {
         console.log("User not found");
-        res.redirect("/login");
+        res.redirect("/login?error=User not found");
         return;
     } else {
         
@@ -160,7 +160,7 @@ app.post("/loggingin", async(req, res) =>{
             return;
         } else {
             console.log("Incorrect password");
-            res.redirect("/login");
+            res.redirect("/login?error=Incorrect password");
             return;
         }
     }
@@ -183,13 +183,18 @@ app.get("/members", function(req, res) {
 
 app.get("/login", function(req, res) {
     
+    let htmlError = "";
+    if (req.query.error) {
+        htmlError = `<h3 style='color:red;'>${req.query.error}</h3>`;
+    }
     const html = `<form action="/loggingin" method="POST">
     <input type="text" name="username" placeholder="Username" required><br />
     <input type="password" name="password" placeholder="Password" required><br />
     <button type="submit">Submit</button><br />
     <a href="/signup">Sign Up</a> <br />
     <a href="/">Home</a>
-    </form>`;
+    </form>${htmlError}`;
+
     res.send(html);
     
 });
